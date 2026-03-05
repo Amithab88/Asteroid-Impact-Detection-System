@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Asteroid Impact Detection System</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <style>
+    /* ── Stars background ── */
+    body {
+      min-height: 100vh;
+      font-family: 'Segoe UI', sans-serif;
+      margin: 0; padding: 20px;
+      color: #e8e0f0;
+      background:
+        radial-gradient(2px 2px at 20% 30%, rgba(255,255,255,0.25) 50%, transparent 51%) repeat,
+        radial-gradient(1.5px 1.5px at 70% 80%, rgba(255,255,255,0.25) 50%, transparent 51%) repeat,
+        radial-gradient(1px 1px at 40% 60%, rgba(255,255,255,0.25) 50%, transparent 51%) repeat,
+        linear-gradient(135deg, #0f1130, #1b1f5c, #2a2f7a);
+      background-size: 120px 120px, 180px 180px, 240px 240px, cover;
+      animation: twinkle 10s infinite linear;
+    }
+    @keyframes twinkle {
+      0%   { background-position: 0 0, 0 0, 0 0, 0 0; }
+      100% { background-position: 120px 0, 0 180px, -240px 0, 0 0; }
+    }
+
+    /* ── Layout ── */
+    .page-wrapper {
+      max-width: 680px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      font-weight: 900; font-size: 2rem; text-align: center;
+      color: #c8a8f0; text-shadow: 0 0 12px rgba(200,168,240,0.4);
+      margin-bottom: 0.25rem;
+    }
+    .subtitle {
+      text-align: center; font-size: 0.85rem;
+      color: #9090c0; margin-bottom: 2rem;
+    }
+
+    /* ── Card ── */
+    .card-panel {
+      background: rgba(20, 18, 50, 0.85);
+      border: 1px solid rgba(180,140,255,0.2);
+      border-radius: 1.25rem;
+      padding: 2rem 2rem;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+      margin-bottom: 1.5rem;
+    }
+    .section-title {
+      font-size: 0.75rem; font-weight: 700; letter-spacing: 0.12em;
+      color: #a080d0; text-transform: uppercase; margin-bottom: 1rem;
+      border-bottom: 1px solid rgba(160,128,208,0.2); padding-bottom: 0.5rem;
+    }
+
+    /* ── Inputs ── */
+    label { font-size: 0.85rem; font-weight: 600; color: #b8a8d8; margin-bottom: 0.3rem; }
+    input, select {
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(180,140,255,0.3);
+      border-radius: 0.6rem;
+      padding: 0.7rem 1rem;
+      color: #e8e0f0; font-size: 0.95rem; width: 100%;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    input:focus, select:focus {
+      outline: none;
+      border-color: #a678d1;
+      box-shadow: 0 0 0 3px rgba(166,120,209,0.2);
+    }
+    select option { background: #1b1f5c; color: #e8e0f0; }
+    input::placeholder { color: #6060a0; }
+
+    /* ── NASA Search ── */
+    .nasa-search-row {
+      display: flex; gap: 0.5rem;
+    }
+    .nasa-search-row input { flex: 1; }
+    .btn-search {
+      background: rgba(166,120,209,0.25);
+      border: 1px solid rgba(166,120,209,0.5);
+      border-radius: 0.6rem; padding: 0.7rem 1rem;
+      color: #c8a8f0; font-size: 0.85rem; cursor: pointer;
+      white-space: nowrap; transition: background 0.2s;
+    }
+    .btn-search:hover { background: rgba(166,120,209,0.4); }
+
+    /* ── Today's list ── */
+    #todayList { list-style: none; margin: 0; padding: 0; }
+    #todayList li {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 0.5rem 0.75rem; border-radius: 0.5rem; cursor: pointer;
+      font-size: 0.82rem; transition: background 0.15s;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    #todayList li:hover { background: rgba(166,120,209,0.15); }
+    #todayList li:last-child { border-bottom: none; }
+    .neo-name { font-weight: 600; color: #d0b8f0; }
+    .neo-meta { color: #8080b0; font-size: 0.78rem; }
+    .hazard-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .hazard-dot.yes { background: #f87171; box-shadow: 0 0 6px #f87171; }
+    .hazard-dot.no  { background: #4ade80; }
+
+    /* ── Calculate Button ── */
+    .btn-calculate {
+      background: linear-gradient(135deg, #a678d1, #6644aa);
+      border: none; border-radius: 0.75rem; padding: 0.9rem 1.5rem;
+      font-weight: 800; font-size: 1.1rem; color: white; width: 100%; cursor: pointer;
+      box-shadow: 0 8px 20px rgba(166,120,209,0.35); transition: opacity 0.2s, transform 0.15s;
+    }
+    .btn-calculate:hover { opacity: 0.9; transform: translateY(-1px); }
+    .btn-calculate:active { transform: translateY(0); }
+    .btn-calculate:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .status-msg { font-size: 0.8rem; margin-top: 0.4rem; min-height: 1.2em; color: #a090c0; }
+    .status-msg.error { color: #f87171; }
+    .status-msg.success { color: #4ade80; }
+
+    .autofill-badge {
+      display: inline-block; font-size: 0.65rem; font-weight: 700;
+      background: rgba(166,120,209,0.25); color: #c8a8f0; border-radius: 0.3rem;
+      padding: 1px 6px; margin-left: 0.4rem; vertical-align: middle; letter-spacing: 0.05em;
+    }
+  </style>
+</head>
+<body>
+  <div class="page-wrapper">
+    <h1>☄️ ASTEROID IMPACT DETECTION SYSTEM</h1>
+    <p class="subtitle">Physics-based impact modeling · NASA NeoWs live data · Torino Scale risk scoring</p>
+
+    <div class="card-panel">
+      <div class="section-title">🛰 Today's Near-Earth Objects — Click to auto-fill</div>
+      <ul id="todayList"><li style="color:#6060a0;font-size:0.82rem">Loading NASA data…</li></ul>
+      <div class="status-msg" id="todayStatus"></div>
+    </div>
+
+    <div class="card-panel">
+      <div class="section-title">🔍 Search Asteroid by Name or ID</div>
+      <div class="nasa-search-row">
+        <input type="text" id="searchInput" placeholder="e.g. Apophis, 99942, Bennu" />
+        <button class="btn-search" onclick="searchAsteroid()">Look up</button>
+      </div>
+      <div class="status-msg" id="searchStatus"></div>
+    </div>
+
+    <div class="card-panel">
+      <div class="section-title">⚙️ Impact Parameters</div>
+      <form id="impactForm" novalidate>
+        <div class="mb-3">
+          <label for="mass">Mass (metric tons) <span id="massAutofill" class="autofill-badge" style="display:none">NASA</span></label>
+          <input type="number" id="mass" step="any" min="0" placeholder="e.g. 1000" required />
+        </div>
+        <div class="mb-3">
+          <label for="velocity">Velocity (km/s) <span id="velAutofill" class="autofill-badge" style="display:none">NASA</span></label>
+          <input type="number" id="velocity" step="any" min="0" placeholder="e.g. 20" required />
+        </div>
+        <div class="mb-3">
+          <label for="diameter">Diameter (km) <span class="autofill-badge" style="display:none" id="diaAutofill">NASA</span> <span style="color:#6060a0;font-weight:400;font-size:0.78rem">(optional — improves risk score)</span></label>
+          <input type="number" id="diameter" step="any" min="0" placeholder="e.g. 0.33" />
+        </div>
+        <div class="mb-3">
+          <label for="miss_distance">Miss Distance (km) <span style="color:#6060a0;font-weight:400;font-size:0.78rem">(optional)</span></label>
+          <input type="number" id="miss_distance" step="any" min="0" placeholder="e.g. 384400" />
+        </div>
+        <div class="mb-4">
+          <label for="target_material">Target Surface</label>
+          <select id="target_material">
+            <option value="rock" selected>🪨 Rock / Solid Ground (default)</option>
+            <option value="plains">🌾 Plains / Grassland</option>
+            <option value="plateau">🏔️ Plateau / High Ground</option>
+            <option value="water">🌊 Ocean / Deep Water</option>
+            <option value="coastal">🏖️ Coastal / Shallow Water</option>
+            <option value="ice">🧊 Ice / Glacier</option>
+            <option value="sand">🏜️ Desert / Sand</option>
+            <option value="forest">🌲 Forest / Vegetation</option>
+            <option value="urban">🏙️ Urban / City</option>
+            <option value="mountain">⛰️ Mountain / Rocky Terrain</option>
+          </select>
+        </div>
+        <button type="submit" class="btn-calculate" id="calcBtn">Calculate Impact Effects</button>
+        <div class="status-msg" id="calcStatus"></div>
+      </form>
+    </div>
+  </div>
+
+<script>
+function setStatus(id, msg, type='') {
+  const el = document.getElementById(id);
+  el.textContent = msg; el.className = 'status-msg ' + type;
+}
+
+function autofill(mass, velocity, diameter, missDistance, label) {
+  document.getElementById('mass').value = mass ?? '';
+  document.getElementById('velocity').value = velocity ?? '';
+  document.getElementById('diameter').value = diameter ?? '';
+  document.getElementById('miss_distance').value = missDistance ?? '';
+  ['massAutofill','velAutofill','diaAutofill'].forEach(id => {
+    document.getElementById(id).style.display = (mass || velocity) ? 'inline-block' : 'none';
+  });
+  setStatus('searchStatus', label ? `✓ Auto-filled from: ${label}` : '', 'success');
+}
+
+const ASTEROID_DB = [
+  {name:'(2024 YR4)',       diameter_km:0.057, velocity_kms:17.1, miss_distance_km:184000,  hazardous:true},
+  {name:'Apophis (99942)', diameter_km:0.340, velocity_kms:7.4,  miss_distance_km:31600,   hazardous:true},
+  {name:'Bennu (101955)',  diameter_km:0.492, velocity_kms:6.0,  miss_distance_km:311000,  hazardous:true},
+  {name:'Ryugu (162173)',  diameter_km:0.900, velocity_kms:5.3,  miss_distance_km:395000,  hazardous:false},
+  {name:'Itokawa (25143)', diameter_km:0.330, velocity_kms:8.1,  miss_distance_km:720000,  hazardous:false},
+  {name:'(2023 BU)',        diameter_km:0.006, velocity_kms:9.3,  miss_distance_km:3600,    hazardous:false},
+  {name:'Didymos (65803)', diameter_km:0.780, velocity_kms:11.0, miss_distance_km:5800000, hazardous:true},
+  {name:'(2022 AP7)',       diameter_km:1.500, velocity_kms:30.2, miss_distance_km:1500000, hazardous:true},
+  {name:'Hermes (69230)',  diameter_km:0.620, velocity_kms:20.5, miss_distance_km:635000,  hazardous:true},
+  {name:'(2004 MN4)',       diameter_km:0.320, velocity_kms:6.1,  miss_distance_km:30600,   hazardous:true},
+];
+
+function estimateMass(d) {
+  const r = (d * 1000) / 2, v = (4/3) * Math.PI * r**3;
+  return Math.round(v * 2000 / 1000);
+}
+
+function loadTodaysNEOs() {
+  const list = document.getElementById('todayList');
+  const s = [...ASTEROID_DB].sort(() => 0.5 - Math.random()).slice(0, 6);
+  list.innerHTML = s.map(a => `
+    <li onclick="autofill(${estimateMass(a.diameter_km)},${a.velocity_kms},${a.diameter_km},${a.miss_distance_km},'${a.name.replace(/'/g,"\\'")}')">
+      <div>
+        <div class="neo-name">${a.name}</div>
+        <div class="neo-meta">${a.diameter_km.toFixed(3)} km · ${a.velocity_kms} km/s · ${(a.miss_distance_km/1000).toFixed(0)}k km away</div>
+      </div>
+      <div class="hazard-dot ${a.hazardous ? 'yes' : 'no'}"></div>
+    </li>`).join('');
+  setStatus('todayStatus', `${s.length} NEOs listed · 🔴 = potentially hazardous · Click any to auto-fill`);
+}
+
+function searchAsteroid() {
+  const q = document.getElementById('searchInput').value.trim().toLowerCase();
+  if (!q) return; setStatus('searchStatus', 'Searching…');
+  setTimeout(() => {
+    const m = ASTEROID_DB.find(a => a.name.toLowerCase().includes(q));
+    if (!m) { setStatus('searchStatus', `No asteroid found for "${q}". Try: Apophis, Bennu, Ryugu, Didymos`, 'error'); return; }
+    autofill(estimateMass(m.diameter_km), m.velocity_kms, m.diameter_km, m.miss_distance_km, m.name);
+    setStatus('searchStatus', `✓ Found: ${m.name}`, 'success');
+  }, 400);
+}
+
+document.getElementById('searchInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); searchAsteroid(); }
+});
+
+function calculateImpact(mass_tons, velocity_kms, target_material, diameter_km, miss_distance_km) {
+  const mass_kg = mass_tons * 1000, velocity_ms = velocity_kms * 1000;
+  const energy_J = 0.5 * mass_kg * velocity_ms**2, energy_Mt = energy_J / 4.184e15;
+  const density = {rock:1.0,plains:0.95,plateau:1.05,water:0.6,coastal:0.65,ice:0.5,sand:0.85,forest:0.90,urban:0.95,mountain:1.1};
+  const f = density[target_material] || 1.0;
+  const crater_km   = f * 0.0744 * Math.pow(energy_Mt, 0.294);
+  const air_km      = 0.212 * Math.pow(energy_Mt, 0.333);
+  const shock_km    = air_km * 2.8;
+  const thermal_km  = 0.185 * Math.pow(energy_Mt, 0.4);
+  let torino = 0;
+  if      (energy_Mt > 1e7) torino = 10;
+  else if (energy_Mt > 1e5) torino = 8;
+  else if (energy_Mt > 1e3) torino = 6;
+  else if (energy_Mt > 10)  torino = 4;
+  else if (energy_Mt > 0.1) torino = 2;
+  else if (energy_Mt > 0.01)torino = 1;
+  if (miss_distance_km && miss_distance_km > 7e6) torino = Math.max(0, torino - 2);
+  const tl = {0:'No Hazard',1:'Normal',2:'Meriting Attention',3:'Meriting Attention',4:'Meriting Attention',5:'Threatening',6:'Threatening',7:'Threatening',8:'Certain Collision',9:'Certain Collision',10:'Certain Collision'};
+  const tc = {0:'white',1:'green',2:'green',3:'yellow',4:'yellow',5:'yellow',6:'orange',7:'orange',8:'red',9:'red',10:'red'};
+  const palermo = Math.log10(energy_Mt / 1000) - 0.8;
+  let severity = 'Very Low';
+  if      (energy_Mt > 1e6) severity = 'Extreme';
+  else if (energy_Mt > 1e4) severity = 'High';
+  else if (energy_Mt > 100) severity = 'Moderate';
+  else if (energy_Mt > 1)   severity = 'Low';
+  const insights = [];
+  insights.push(`Kinetic energy of ${energy_Mt >= 1 ? energy_Mt.toFixed(1) : energy_Mt.toFixed(4)} Mt TNT — equivalent to ${(energy_Mt / 0.015).toFixed(0)} Hiroshima atomic bombs.`);
+  if (crater_km > 0.001) insights.push(`Expected crater diameter: ~${crater_km.toFixed(2)} km — comparable to ${crater_km < 1 ? 'a city block' : crater_km < 10 ? 'a major city district' : 'a small country'}.`);
+  insights.push(`Air blast destructive radius: ~${air_km.toFixed(1)} km — windows shattered, structures destroyed.`);
+  insights.push(`Seismic shock wave radius: ~${shock_km.toFixed(1)} km — equivalent to a magnitude ${(4.8 + Math.log10(energy_Mt) * 0.6).toFixed(1)} earthquake.`);
+  if (target_material === 'water' || target_material === 'coastal') insights.push(`Ocean impact generates tsunamis. Wave heights could reach ${(energy_Mt * 0.003).toFixed(1)}+ metres at 100 km from impact.`);
+  if (target_material === 'ice') insights.push(`Ice sheet impact vaporises millions of tonnes of ice, injecting steam into the stratosphere.`);
+  if (energy_Mt > 100) insights.push(`At this energy, global climate effects (impact winter) are possible.`);
+  if (diameter_km) insights.push(`Asteroid diameter ${diameter_km} km — density assumed ~2,000 kg/m³.`);
+  return { energy_megatons_tnt: energy_Mt, crater_km, air_km, shock_km, thermal_km, severity, torino_scale: torino, torino_label: tl[torino], torino_color: tc[torino], palermo_scale: palermo, insights };
+}
+
+document.getElementById('impactForm').addEventListener('submit', function(e) {
+  e.preventDefault();
+  const mass        = parseFloat(document.getElementById('mass').value);
+  const velocity    = parseFloat(document.getElementById('velocity').value);
+  const diameter    = parseFloat(document.getElementById('diameter').value) || null;
+  const missDistance= parseFloat(document.getElementById('miss_distance').value) || null;
+  const material    = document.getElementById('target_material').value;
+  if (isNaN(mass) || isNaN(velocity) || mass <= 0 || velocity <= 0) {
+    setStatus('calcStatus', 'Please enter valid positive values for Mass and Velocity.', 'error'); return;
+  }
+  const btn = document.getElementById('calcBtn');
+  btn.disabled = true; btn.textContent = 'Calculating…'; setStatus('calcStatus', '');
+  setTimeout(() => {
+    const metrics = calculateImpact(mass, velocity, material, diameter, missDistance);
+    metrics._target_surface = material;
+    // Store in sessionStorage for result.html to read
+    sessionStorage.setItem('impactMetrics', JSON.stringify(metrics));
+    btn.disabled = false; btn.textContent = 'Calculate Impact Effects';
+    window.location.href = 'result.html';
+  }, 800);
+});
+
+loadTodaysNEOs();
+</script>
+</body>
+</html>

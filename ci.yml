@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install -r backend/requirements.txt
+          pip install flake8 pytest httpx
+
+      - name: Lint with flake8
+        run: |
+          flake8 backend/ --max-line-length=120 --exclude=__pycache__
+
+      - name: Run tests
+        env:
+          NASA_API_KEY: DEMO_KEY
+        run: |
+          pytest backend/tests/ -v

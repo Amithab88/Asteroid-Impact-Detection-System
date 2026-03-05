@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Impact Analysis Result</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <style>
+    body {
+      min-height: 100vh; font-family: 'Segoe UI', sans-serif;
+      margin: 0; padding: 20px; color: #e8e0f0;
+      background:
+        radial-gradient(2px 2px at 20% 30%, rgba(255,255,255,0.25) 50%, transparent 51%) repeat,
+        radial-gradient(1.5px 1.5px at 70% 80%, rgba(255,255,255,0.25) 50%, transparent 51%) repeat,
+        radial-gradient(1px 1px at 40% 60%, rgba(255,255,255,0.25) 50%, transparent 51%) repeat,
+        linear-gradient(135deg, #0f1130, #1b1f5c, #2a2f7a);
+      background-size: 120px 120px, 180px 180px, 240px 240px, cover;
+      animation: twinkle 10s infinite linear;
+    }
+    @keyframes twinkle {
+      0%   { background-position: 0 0, 0 0, 0 0, 0 0; }
+      100% { background-position: 120px 0, 0 180px, -240px 0, 0 0; }
+    }
+
+    .page-wrapper { max-width: 900px; margin: 0 auto; }
+
+    h1 {
+      font-weight: 900; font-size: 1.8rem; text-align: center;
+      color: #c8a8f0; text-shadow: 0 0 12px rgba(200,168,240,0.4);
+      margin-bottom: 2rem;
+    }
+
+    .card-panel {
+      background: rgba(20, 18, 50, 0.85);
+      border: 1px solid rgba(180,140,255,0.2);
+      border-radius: 1.25rem; padding: 1.5rem 1.75rem;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+      margin-bottom: 1.5rem;
+    }
+    .section-title {
+      font-size: 0.75rem; font-weight: 700; letter-spacing: 0.12em;
+      color: #a080d0; text-transform: uppercase; margin-bottom: 1rem;
+      border-bottom: 1px solid rgba(160,128,208,0.2); padding-bottom: 0.5rem;
+    }
+
+    /* ── Torino Badge ── */
+    .torino-badge { display: flex; align-items: center; gap: 1rem; padding: 1rem 1.25rem; border-radius: 0.75rem; margin-bottom: 1rem; }
+    .torino-badge.white  { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.2); }
+    .torino-badge.green  { background: rgba(74,222,128,0.1);   border: 1px solid rgba(74,222,128,0.3); }
+    .torino-badge.yellow { background: rgba(250,204,21,0.1);   border: 1px solid rgba(250,204,21,0.3); }
+    .torino-badge.orange { background: rgba(251,146,60,0.1);   border: 1px solid rgba(251,146,60,0.3); }
+    .torino-badge.red    { background: rgba(248,113,113,0.1);  border: 1px solid rgba(248,113,113,0.3); }
+    .torino-level { font-size: 2.5rem; font-weight: 900; line-height: 1; min-width: 2.5rem; text-align: center; }
+    .torino-badge.white  .torino-level { color: #e0e0e0; }
+    .torino-badge.green  .torino-level { color: #4ade80; }
+    .torino-badge.yellow .torino-level { color: #facc15; }
+    .torino-badge.orange .torino-level { color: #fb923c; }
+    .torino-badge.red    .torino-level { color: #f87171; }
+    .torino-text .torino-label { font-size: 1rem; font-weight: 700; margin-bottom: 0.2rem; }
+    .torino-text .torino-desc  { font-size: 0.78rem; color: #9090c0; line-height: 1.4; }
+
+    /* ── Stat Grid ── */
+    .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.75rem; }
+    .stat-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(180,140,255,0.12); border-radius: 0.75rem; padding: 0.85rem 1rem; text-align: center; }
+    .stat-value { font-size: 1.4rem; font-weight: 800; color: #d0b8f0; }
+    .stat-label { font-size: 0.72rem; color: #7070a0; margin-top: 0.2rem; }
+    .stat-card.clickable { cursor: pointer; transition: border-color 0.2s, background 0.2s; position: relative; }
+    .stat-card.clickable:hover { border-color: rgba(166,120,209,0.5); background: rgba(166,120,209,0.08); }
+    .stat-hint { font-size: 0.62rem; color: #a678d1; margin-top: 0.15rem; font-weight: 700; letter-spacing: 0.05em; }
+
+    /* ── Severity Pill ── */
+    .severity-pill { display: inline-block; border-radius: 99px; padding: 0.2rem 0.8rem; font-size: 0.78rem; font-weight: 700; }
+    .severity-pill.very-low  { background: rgba(74,222,128,0.15);  color: #4ade80; }
+    .severity-pill.low       { background: rgba(163,230,53,0.15);  color: #a3e635; }
+    .severity-pill.moderate  { background: rgba(250,204,21,0.15);  color: #facc15; }
+    .severity-pill.high      { background: rgba(251,146,60,0.15);  color: #fb923c; }
+    .severity-pill.extreme   { background: rgba(248,113,113,0.15); color: #f87171; }
+
+    /* ── Insights ── */
+    #insightsList li { font-size: 0.84rem; color: #b0a0d0; line-height: 1.6; padding: 0.3rem 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+    #insightsList li:last-child { border-bottom: none; }
+
+    /* ── Back Button ── */
+    .btn-back {
+      display: block; text-align: center;
+      background: linear-gradient(135deg, #a678d1, #6644aa);
+      border: none; border-radius: 0.75rem; padding: 0.85rem; font-weight: 700; font-size: 1rem;
+      color: white; text-decoration: none; box-shadow: 0 8px 20px rgba(166,120,209,0.3);
+      transition: opacity 0.2s; cursor: pointer; width: 100%;
+    }
+    .btn-back:hover { opacity: 0.88; color: white; }
+
+    /* ── Palermo Bar ── */
+    .palermo-bar { height: 8px; border-radius: 4px; background: linear-gradient(90deg, #4ade80, #facc15, #fb923c, #f87171); position: relative; margin: 0.5rem 0; }
+    .palermo-marker { position: absolute; top: -4px; width: 16px; height: 16px; border-radius: 50%; background: white; border: 2px solid #a678d1; transform: translateX(-50%); transition: left 0.5s ease; }
+
+    #terrainTag { display: inline-block; font-size: 0.75rem; font-weight: 600; background: rgba(166,120,209,0.2); color: #c8a8f0; border: 1px solid rgba(166,120,209,0.4); border-radius: 0.4rem; padding: 0.2rem 0.7rem; margin-left: 0.5rem; vertical-align: middle; }
+
+    /* ── View Selector ── */
+    .view-selector-row { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.75rem; }
+    .view-btn { background: rgba(255,255,255,0.05); border: 1px solid rgba(180,140,255,0.25); border-radius: 0.5rem; padding: 0.45rem 0.85rem; color: #9080b8; font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+    .view-btn:hover { background: rgba(166,120,209,0.18); color: #c8a8f0; border-color: rgba(166,120,209,0.5); }
+    .view-btn.active { background: linear-gradient(135deg,rgba(166,120,209,0.3),rgba(100,68,170,0.3)); border-color: #a678d1; color: #e0c8ff; }
+    .view-desc { font-size: 0.78rem; color: #7070a0; font-style: italic; min-height: 1.2em; }
+
+    /* ── Canvas Wrapper ── */
+    #impactAnimationWrapper { position: relative; width: 100%; border-radius: 1rem; overflow: hidden; background: #000; }
+    #impactCanvas { width: 100% !important; height: 500px !important; display: block; }
+    #_flashOverlay { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; border-radius: 1rem; }
+    #animationLabel { position: absolute; top: 12px; left: 16px; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.12em; color: rgba(200,168,240,0.75); text-transform: uppercase; pointer-events: none; }
+    #simTimer { position: absolute; top: 12px; right: 80px; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em; color: rgba(200,168,240,0.6); font-family: monospace; }
+    #replayBtn { position: absolute; bottom: 14px; right: 14px; background: rgba(166,120,209,0.3); border: 1px solid rgba(166,120,209,0.6); border-radius: 0.5rem; padding: 0.4rem 0.9rem; color: #c8a8f0; font-size: 0.78rem; cursor: pointer; transition: background 0.2s; }
+    #replayBtn:hover { background: rgba(166,120,209,0.55); }
+  </style>
+</head>
+<body>
+  <div class="page-wrapper">
+    <h1>☄️ IMPACT ANALYSIS RESULT</h1>
+
+    <!-- VIEW SELECTOR -->
+    <div class="card-panel" style="padding:1rem 1.5rem;">
+      <div class="section-title">🎮 Visualization Mode</div>
+      <div class="view-selector-row">
+        <button class="view-btn active" data-view="impact"    onclick="switchView('impact',this)">💥 Full Impact</button>
+        <button class="view-btn"        data-view="crater"    onclick="switchView('crater',this)">🕳️ Crater Formation</button>
+        <button class="view-btn"        data-view="shockwave" onclick="switchView('shockwave',this)">🌊 Shock Wave</button>
+        <button class="view-btn"        data-view="thermal"   onclick="switchView('thermal',this)">🔥 Thermal Radiation</button>
+        <button class="view-btn"        data-view="tsunami"   onclick="switchView('tsunami',this)">🌊 Tsunami</button>
+        <button class="view-btn"        data-view="airblast"  onclick="switchView('airblast',this)">💨 Air Blast</button>
+      </div>
+      <div class="view-desc" id="viewDesc">Cinematic side-view impact sequence with terrain destruction</div>
+    </div>
+
+    <!-- ANIMATION CANVAS -->
+    <div class="card-panel" style="padding:1rem 1rem 0.5rem;">
+      <div class="section-title">🎬 Live Simulation <span id="terrainTag"></span></div>
+      <div id="impactAnimationWrapper">
+        <canvas id="impactCanvas"></canvas>
+        <div id="_flashOverlay"></div>
+        <div id="animationLabel">LIVE SIMULATION</div>
+        <div id="simTimer"></div>
+        <button id="replayBtn" onclick="replayAnimation()">↺ Replay</button>
+      </div>
+    </div>
+
+    <!-- METRICS -->
+    <div class="card-panel">
+      <div class="section-title">📊 Impact Metrics</div>
+      <div class="stat-grid">
+        <div class="stat-card clickable" onclick="switchView('impact',null)" title="Click to visualize">
+          <div class="stat-value" id="statEnergy">–</div>
+          <div class="stat-label">Kinetic Energy (Mt TNT)</div>
+          <div class="stat-hint">Full Impact</div>
+        </div>
+        <div class="stat-card clickable" onclick="switchView('crater',null)" title="Click to visualize">
+          <div class="stat-value" id="statCrater">–</div>
+          <div class="stat-label">Crater Diameter (km)</div>
+          <div class="stat-hint">▶ Visualize</div>
+        </div>
+        <div class="stat-card clickable" onclick="switchView('airblast',null)" title="Click to visualize">
+          <div class="stat-value" id="statAir">–</div>
+          <div class="stat-label">Air Blast Radius (km)</div>
+          <div class="stat-hint">▶ Visualize</div>
+        </div>
+        <div class="stat-card clickable" onclick="switchView('shockwave',null)" title="Click to visualize">
+          <div class="stat-value" id="statShock">–</div>
+          <div class="stat-label">Shock Wave Radius (km)</div>
+          <div class="stat-hint">▶ Visualize</div>
+        </div>
+        <div class="stat-card clickable" onclick="switchView('thermal',null)" title="Click to visualize">
+          <div class="stat-value" id="statThermal">–</div>
+          <div class="stat-label">Thermal Radiation (km)</div>
+          <div class="stat-hint">▶ Visualize</div>
+        </div>
+        <div class="stat-card">
+          <div><span class="stat-value" id="statSeverity">–</span></div>
+          <div class="stat-label">Severity Rating</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TORINO -->
+    <div class="card-panel">
+      <div class="section-title">🌍 Torino Scale Risk Classification</div>
+      <div id="torinoBadge" class="torino-badge white">
+        <div class="torino-level" id="torinoLevel">–</div>
+        <div class="torino-text">
+          <div class="torino-label" id="torinoLabel">Loading…</div>
+          <div class="torino-desc"  id="torinoDesc"></div>
+        </div>
+      </div>
+      <div id="palmernoSection" style="display:none">
+        <div style="font-size:0.78rem;color:#9090c0;margin-bottom:0.25rem">
+          Palermo Scale: <span id="palmernoValue" style="font-weight:700;color:#c8a8f0"></span>
+          <span style="margin-left:0.5rem;font-size:0.72rem;color:#6060a0">(0 = background risk · &gt;0 = above background)</span>
+        </div>
+        <div class="palermo-bar"><div class="palermo-marker" id="palmernoMarker"></div></div>
+      </div>
+    </div>
+
+    <!-- CHART -->
+    <div class="card-panel">
+      <div class="section-title">📈 Effect Zones Comparison</div>
+      <div id="plotChart" style="height:260px;"></div>
+    </div>
+
+    <!-- INSIGHTS -->
+    <div class="card-panel">
+      <div class="section-title">💡 Scientific Insights</div>
+      <ul id="insightsList" style="list-style:none;padding:0;margin:0;"></ul>
+    </div>
+
+    <button class="btn-back" onclick="window.location.href='index.html'">← Calculate Another Impact</button>
+    <div style="height:2rem"></div>
+  </div>
+
+<script>
+// ═══════════════════════════════════════════
+//  LOAD METRICS FROM sessionStorage
+// ═══════════════════════════════════════════
+const _metricsData = JSON.parse(sessionStorage.getItem('impactMetrics') || 'null');
+if (!_metricsData) {
+  document.querySelector('h1').textContent = '⚠️ No Data Found';
+  document.querySelector('.page-wrapper').innerHTML += '<p style="text-align:center;color:#f87171">No impact data found. <a href="index.html" style="color:#c8a8f0">Go back to the calculator.</a></p>';
+}
+
+// ═══════════════════════════════════════════
+//  CONSTANTS & HELPERS
+// ═══════════════════════════════════════════
+const TORINO_DESCRIPTIONS = {
+  0:'The likelihood of a collision is zero, or the object is too small to cause damage.',
+  1:'A routine discovery. A new prediction unlikely to be a threat.',
+  2:'A discovery meriting attention by astronomers.',
+  3:'A close encounter meriting attention. 1% or greater chance of collision.',
+  4:'A close encounter meriting attention. 1% or greater chance of significant impact.',
+  5:'A close encounter posing serious but uncertain threat.',
+  6:'A close encounter posing serious threat. Significant certainty of damaging impact.',
+  7:'A very close encounter posing unprecedented threat. Collision likely.',
+  8:'A collision is certain, capable of causing localized destruction.',
+  9:'A collision is certain, capable of causing regional devastation.',
+  10:'A collision is certain, capable of causing global climate catastrophe.'
+};
+const SEVERITY_CLASS = {'Very Low':'very-low','Low':'low','Moderate':'moderate','High':'high','Extreme':'extreme'};
+function fmt(n) {
+  if (n === null || n === undefined) return '–';
+  if (n >= 1000) return n.toLocaleString(undefined, {maximumFractionDigits:0});
+  if (n >= 10)   return n.toFixed(1);
+  return n.toFixed(3);
+}
+const TERRAIN_CONFIG = {
+  rock:    {label:'Rock / Ground',     emoji:'🪨', sky:[0.05,0.05,0.15], ground:[0.35,0.30,0.25], type:'land'},
+  plains:  {label:'Plains / Grassland',emoji:'🌾', sky:[0.40,0.65,0.90], ground:[0.25,0.55,0.15], type:'plains'},
+  plateau: {label:'Plateau',           emoji:'🏔️', sky:[0.30,0.45,0.70], ground:[0.50,0.42,0.30], type:'plateau'},
+  water:   {label:'Ocean / Deep Water',emoji:'🌊', sky:[0.05,0.12,0.35], ground:[0.02,0.10,0.40], type:'ocean'},
+  coastal: {label:'Coastal Water',     emoji:'🏖️', sky:[0.40,0.70,0.90], ground:[0.05,0.45,0.60], type:'ocean'},
+  ice:     {label:'Ice / Glacier',     emoji:'🧊', sky:[0.55,0.75,0.95], ground:[0.80,0.90,0.95], type:'ice'},
+  sand:    {label:'Desert / Sand',     emoji:'🏜️', sky:[0.90,0.75,0.45], ground:[0.85,0.75,0.40], type:'desert'},
+  forest:  {label:'Forest',            emoji:'🌲', sky:[0.25,0.55,0.30], ground:[0.10,0.30,0.05], type:'forest'},
+  urban:   {label:'Urban / City',      emoji:'🏙️', sky:[0.55,0.60,0.65], ground:[0.30,0.30,0.32], type:'urban'},
+  mountain:{label:'Mountain',          emoji:'⛰️', sky:[0.35,0.50,0.75], ground:[0.45,0.38,0.28], type:'mountain'},
+};
+
+const VIEW_DESCS = {
+  impact:    '🎬 Cinematic side-view full impact sequence — asteroid entry, collision, explosion & aftermath',
+  crater:    '🕳️ Zoom from space to ground — watch the crater excavate and rim walls form in real-time',
+  shockwave: '💫 Ground-level view — concentric pressure waves radiate outward destroying everything in their path',
+  thermal:   '🔥 Thermal radiation front — superheated air and fire propagate across the landscape',
+  tsunami:   '🌊 Ocean surface view — mega-tsunami waves form and propagate outward from impact point',
+  airblast:  '💨 Atmospheric blast wave — high-pressure air column collapses structures across the blast radius',
+};
+let _currentView = 'impact';
+
+function switchView(view, btn) {
+  _currentView = view;
+  document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  else { const b = document.querySelector(`.view-btn[data-view="${view}"]`); if (b) b.classList.add('active'); }
+  document.getElementById('viewDesc').textContent = VIEW_DESCS[view] || '';
+  replayAnimation();
+}
+
+// ═══════════════════════════════════════════
+//  INIT RESULT PAGE
+// ═══════════════════════════════════════════
+function initResultPage() {
+  const metrics = _metricsData;
+  if (!metrics) return;
+  const surface = metrics._target_surface || 'rock';
+  window._currentSurface = surface;
+  const cfg = TERRAIN_CONFIG[surface] || TERRAIN_CONFIG.rock;
+  _currentView = 'impact';
+  document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+  const firstBtn = document.querySelector('.view-btn[data-view="impact"]');
+  if (firstBtn) firstBtn.classList.add('active');
+  document.getElementById('viewDesc').textContent = VIEW_DESCS.impact;
+
+  // Hide tsunami button if not ocean
+  const tsunamiBtn = document.querySelector('.view-btn[data-view="tsunami"]');
+  if (tsunamiBtn) tsunamiBtn.style.display = (cfg.type === 'ocean' || cfg.type === 'coastal') ? '' : 'none';
+
+  document.getElementById('terrainTag').textContent = `${cfg.emoji} ${cfg.label}`;
+
+  const color = metrics.torino_color || 'white';
+  document.getElementById('torinoBadge').className = `torino-badge ${color}`;
+  document.getElementById('torinoLevel').textContent = metrics.torino_scale;
+  document.getElementById('torinoLabel').textContent = `${metrics.torino_label} (Torino Level ${metrics.torino_scale})`;
+  document.getElementById('torinoDesc').textContent  = TORINO_DESCRIPTIONS[metrics.torino_scale] || '';
+
+  if (metrics.palermo_scale !== null && metrics.palermo_scale !== undefined) {
+    document.getElementById('palmernoSection').style.display = 'block';
+    document.getElementById('palmernoValue').textContent = metrics.palermo_scale.toFixed(2);
+    const pct = Math.min(Math.max(((metrics.palermo_scale + 10) / 12) * 100, 0), 100);
+    document.getElementById('palmernoMarker').style.left = pct + '%';
+  }
+
+  document.getElementById('statEnergy').textContent  = fmt(metrics.energy_megatons_tnt);
+  document.getElementById('statCrater').textContent  = fmt(metrics.crater_km);
+  document.getElementById('statAir').textContent     = fmt(metrics.air_km);
+  document.getElementById('statShock').textContent   = fmt(metrics.shock_km);
+  document.getElementById('statThermal').textContent = fmt(metrics.thermal_km);
+  const sev = metrics.severity || 'Unknown';
+  document.getElementById('statSeverity').innerHTML  = `<span class="severity-pill ${SEVERITY_CLASS[sev] || ''}">${sev}</span>`;
+
+  const labels = ['Crater Diameter','Air Blast Radius','Shock Wave Radius','Thermal Radiation'];
+  const values = [metrics.crater_km, metrics.air_km, metrics.shock_km, metrics.thermal_km];
+  const colors = ['#a678d1','#f87171','#fb923c','#facc15'];
+  Plotly.newPlot('plotChart',
+    [{type:'bar',orientation:'h',x:values,y:labels,marker:{color:colors},
+      text:values.map(v => `${fmt(v)} km`),textposition:'outside',
+      textfont:{color:'#c8a8f0',size:11},hovertemplate:'%{y}: %{x:.3f} km<extra></extra>'}],
+    {paper_bgcolor:'transparent',plot_bgcolor:'transparent',margin:{l:150,r:60,t:10,b:30},
+     xaxis:{color:'#8080b0',gridcolor:'rgba(128,128,176,0.15)',title:{text:'Radius (km)',font:{color:'#8080b0',size:11}}},
+     yaxis:{color:'#c8a8f0',tickfont:{size:11}},font:{family:'Segoe UI, sans-serif'}},
+    {responsive:true,displayModeBar:false});
+
+  const list = document.getElementById('insightsList'); list.innerHTML = '';
+  (metrics.insights || []).forEach(tip => {
+    const li = document.createElement('li'); li.textContent = tip; list.appendChild(li);
+  });
+
+  requestAnimationFrame(() => initThreeJS(surface, _currentView));
+}
+
+// ═══════════════════════════════════════════
+//  ULTRA-REALISTIC CINEMATIC ENGINE v3
+// ═══════════════════════════════════════════
+let R=null,SC=null,CAM=null,AF=null,CLK=null;
+let surfType='land';
+let particles=[],shockRings=[],crackLines=[],terrainObjs=[],lights3=[];
+let craterGroup=null,AST=null,groundMesh=null;
+let camT={x:0,y:8,z:28},camC={x:0,y:8,z:28};
+let camLT={x:0,y:0,z:0},camLC={x:0,y:0,z:0};
+let camFovT=60,camFovC=60;
+let camShake=0,flashOpacity=0;
+let impactDone=false,impactTime=0;
+let animT=0,timerEl=null;
+
+function rnd(a,b){return a+Math.random()*(b-a);}
+function lerp(a,b,t){return a+(b-a)*t;}
+function clamp(v,lo,hi){return Math.max(lo,Math.min(hi,v));}
+function eOut(t,p=3){return 1-Math.pow(1-clamp(t,0,1),p);}
+function eIn(t,p=2){return Math.pow(clamp(t,0,1),p);}
+function eInOut(t){return t<0.5?2*t*t:1-Math.pow(-2*t+2,2)/2;}
+
+const T_PAL={
+  land:   {sA:0x1a3a5c,sB:0x4a8abf,g1:0x3a6820,g2:0x2a4a10,g3:0x1a3008},
+  plains: {sA:0x2a6aaa,sB:0x70b8e8,g1:0x50a030,g2:0x3a7820,g3:0x254d0e},
+  plateau:{sA:0x204060,sB:0x4a78a8,g1:0x907050,g2:0x705838,g3:0x504028},
+  ocean:  {sA:0x030d1a,sB:0x082040,g1:0x083060,g2:0x052040,g3:0x031528,isWater:true},
+  ice:    {sA:0x90c8e0,sB:0xc8eaf8,g1:0xe8f8ff,g2:0xc0e0f0,g3:0xa0c8e0},
+  desert: {sA:0xd08830,sB:0xf0c050,g1:0xd4a840,g2:0xb08820,g3:0x906810},
+  forest: {sA:0x102818,sB:0x205030,g1:0x204814,g2:0x163210,g3:0x0e200a},
+  urban:  {sA:0x252832,sB:0x404858,g1:0x484848,g2:0x303030,g3:0x202020},
+  mountain:{sA:0x283850,sB:0x486888,g1:0x706050,g2:0x504838,g3:0x382e22},
+};
+function _getPal(st){return T_PAL[st]||T_PAL.land;}
+
+function initThreeJS(surface,view){
+  const cfg=TERRAIN_CONFIG[surface]||TERRAIN_CONFIG.rock;
+  surfType=cfg.type;
+  const canvas=document.getElementById('impactCanvas');
+  const W=canvas.parentElement.clientWidth,H=480;
+  canvas.width=W;canvas.height=H;
+  if(R){try{R.dispose();}catch(e){}}
+  R=new THREE.WebGLRenderer({canvas,antialias:true,alpha:false,powerPreference:'high-performance'});
+  R.setSize(W,H);R.setPixelRatio(Math.min(devicePixelRatio,2));
+  R.shadowMap.enabled=true;R.shadowMap.type=THREE.PCFSoftShadowMap;
+  R.toneMapping=THREE.ACESFilmicToneMapping;R.toneMappingExposure=1.15;
+  R.outputEncoding=THREE.sRGBEncoding;
+  SC=new THREE.Scene();
+  CAM=new THREE.PerspectiveCamera(60,W/H,0.05,800);
+  CLK=new THREE.Clock();
+  timerEl=document.getElementById('simTimer');
+  _resetState();
+  _buildWorld();
+  _startView(view||'impact');
+}
+
+function _resetState(){
+  particles=[];shockRings=[];crackLines=[];terrainObjs=[];lights3=[];
+  craterGroup=null;AST=null;groundMesh=null;
+  camT={x:0,y:8,z:28};camC={x:0,y:8,z:28};
+  camLT={x:0,y:0,z:0};camLC={x:0,y:0,z:0};
+  camFovT=60;camFovC=60;camShake=0;flashOpacity=0;
+  impactDone=false;impactTime=0;animT=0;
+}
+
+function _buildWorld(){
+  while(SC.children.length)SC.remove(SC.children[0]);
+  const pal=_getPal(surfType);
+  const skyGeo=new THREE.SphereGeometry(300,32,16);
+  const skyMat=new THREE.ShaderMaterial({
+    uniforms:{zenith:{value:new THREE.Color(pal.sA)},horizon:{value:new THREE.Color(pal.sB)}},
+    vertexShader:`varying float vY;void main(){vY=normalize(position).y;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
+    fragmentShader:`uniform vec3 zenith,horizon;varying float vY;void main(){float t=clamp(vY*1.5+0.2,0.,1.);gl_FragColor=vec4(mix(horizon,zenith,t*t),1.);}`,
+    side:THREE.BackSide,depthWrite:false
+  });
+  SC.add(new THREE.Mesh(skyGeo,skyMat));
+  const hazeGeo=new THREE.CylinderGeometry(250,250,40,32,1,true);
+  const hazeMat=new THREE.ShaderMaterial({
+    uniforms:{col:{value:new THREE.Color(pal.sB)}},
+    vertexShader:`varying float vH;void main(){vH=(position.y+20.)/40.;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
+    fragmentShader:`uniform vec3 col;varying float vH;void main(){float a=clamp(1.-vH,0.,1.)*0.35;gl_FragColor=vec4(col,a);}`,
+    transparent:true,side:THREE.BackSide,depthWrite:false
+  });
+  SC.add(new THREE.Mesh(hazeGeo,hazeMat));
+  if(surfType!=='ocean'&&surfType!=='desert'){
+    for(let i=0;i<12;i++){
+      const cg=new THREE.SphereGeometry(rnd(4,12),12,6);
+      const cm=new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:rnd(0.08,0.18)});
+      const c=new THREE.Mesh(cg,cm);
+      c.scale.y=0.18;c.scale.z=rnd(0.4,0.9);
+      c.position.set(rnd(-80,80),rnd(22,45),rnd(-80,80));
+      SC.add(c);terrainObjs.push(c);
+    }
+  }
+  SC.add(new THREE.HemisphereLight(new THREE.Color(pal.sB),new THREE.Color(pal.g2),0.65));
+  const sun=new THREE.DirectionalLight(0xfff5e0,1.5);
+  sun.position.set(-20,50,15);sun.castShadow=true;
+  sun.shadow.mapSize.set(2048,2048);
+  sun.shadow.camera.near=0.5;sun.shadow.camera.far=200;
+  sun.shadow.camera.left=-70;sun.shadow.camera.right=70;
+  sun.shadow.camera.top=70;sun.shadow.camera.bottom=-70;
+  sun.shadow.bias=-0.0003;
+  SC.add(sun);lights3.push(sun);
+  const fill=new THREE.DirectionalLight(0x88aabb,0.4);fill.position.set(25,15,-20);SC.add(fill);
+  const gRes=pal.isWater?40:100;
+  const gGeo=new THREE.PlaneGeometry(160,160,gRes,gRes);
+  const gArr=gGeo.attributes.position.array;
+  const colArr=new Float32Array(gArr.length);
+  const c1=new THREE.Color(pal.g1),c2=new THREE.Color(pal.g2),c3=new THREE.Color(pal.g3);
+  for(let i=0;i<gArr.length;i+=3){
+    const x=gArr[i],z=gArr[i+2],d=Math.sqrt(x*x+z*z);
+    let h=0;
+    if(surfType==='plains'||surfType==='land'){h=Math.sin(x*0.18)*1.1+Math.cos(z*0.14)*0.9+Math.sin(x*0.5+z*0.3)*0.4+Math.cos(x*0.8-z*0.6)*0.25+rnd(-0.05,0.05);}
+    else if(surfType==='desert'){h=Math.sin(x*0.12)*2.0+Math.cos(z*0.10)*1.6+Math.sin(x*0.3+z*0.2)*0.5+rnd(-0.1,0.1);}
+    else if(surfType==='mountain'||surfType==='plateau'){const ridge=Math.max(0,2.5-d*0.04);h=ridge*rnd(0.6,1.4)+Math.sin(x*0.25)*1.2+Math.cos(z*0.22)*1.0+rnd(-0.2,0.2);}
+    else if(surfType==='ice'){h=Math.sin(x*0.08)*0.5+Math.cos(z*0.07)*0.4+rnd(-0.05,0.05);}
+    else if(surfType==='forest'){h=Math.sin(x*0.2)*0.8+Math.cos(z*0.18)*0.7+rnd(-0.1,0.1);}
+    else if(surfType==='urban'){h=(Math.random()<0.02?rnd(0.1,0.3):0)+rnd(-0.02,0.02);}
+    else if(surfType==='ocean'){h=Math.sin(x*0.5)*0.12+Math.cos(z*0.45)*0.1;}
+    else{h=rnd(-0.12,0.12);}
+    gArr[i+1]=h;
+    const t=clamp((h+2)/4+rnd(-0.05,0.05),0,1);
+    const vc=new THREE.Color().lerpColors(c3,t<0.5?c2:c1,(t<0.5?t*2:(t-0.5)*2));
+    colArr[i]=vc.r;colArr[i+1]=vc.g;colArr[i+2]=vc.b;
+  }
+  gGeo.computeVertexNormals();
+  gGeo.setAttribute('color',new THREE.BufferAttribute(colArr,3));
+  const gMat=pal.isWater
+    ?new THREE.MeshPhongMaterial({color:0x082850,shininess:80,specular:0x224488,transparent:true,opacity:0.92})
+    :new THREE.MeshLambertMaterial({vertexColors:true});
+  groundMesh=new THREE.Mesh(gGeo,gMat);
+  groundMesh.rotation.x=-Math.PI/2;groundMesh.receiveShadow=true;
+  SC.add(groundMesh);
+  if(surfType==='plains'||surfType==='land')_addGrass(),_addTrees(35,false);
+  if(surfType==='forest')_addTrees(100,true),_addGrass();
+  if(surfType==='urban')_addBuildings();
+  if(surfType==='mountain'||surfType==='plateau')_addRocks(30),_addTrees(10,false);
+  if(surfType==='desert')_addDunes(),_addRocks(8);
+  if(surfType==='ice')_addIceSurface();
+  if(surfType==='ocean')_addOceanAnimated();
+  _buildAsteroid();
+}
+
+function _addGrass(){
+  const gMat=new THREE.MeshBasicMaterial({color:0x3a7818,transparent:true,opacity:0.7,side:THREE.DoubleSide});
+  for(let i=0;i<400;i++){
+    const x=rnd(-40,40),z=rnd(-20,20),h=rnd(0.2,0.6);
+    const blade=new THREE.Mesh(new THREE.PlaneGeometry(0.05,h),gMat);
+    blade.position.set(x,h/2,z);blade.rotation.y=rnd(0,Math.PI);
+    SC.add(blade);terrainObjs.push(blade);
+  }
+}
+function _addTrees(n,dense){
+  const trunkMat=new THREE.MeshLambertMaterial({color:dense?0x3a2010:0x5c3a1e});
+  for(let i=0;i<n;i++){
+    const px=rnd(-50,50),pz=rnd(-18,18),h=rnd(2.5,6);
+    if(!dense&&Math.abs(px)<3&&Math.abs(pz)<3)continue;
+    const trunk=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.2,h,8),trunkMat);
+    trunk.position.set(px,h/2,pz);trunk.castShadow=true;SC.add(trunk);terrainObjs.push(trunk);
+    const tiers=dense?3:2;
+    for(let t=0;t<tiers;t++){
+      const tw=rnd(1.0,2.2)*(1-t*0.2),th=rnd(1.5,2.8);
+      const crown=new THREE.Mesh(new THREE.ConeGeometry(tw,th,8),
+        new THREE.MeshLambertMaterial({color:dense?new THREE.Color().setHSL(0.28,0.7,0.12+t*0.04):new THREE.Color().setHSL(0.3,0.65,0.18+t*0.03)}));
+      crown.position.set(px,h+t*th*0.55,pz);crown.castShadow=true;SC.add(crown);terrainObjs.push(crown);
+    }
+  }
+}
+function _addBuildings(){
+  const palBld=[0x484850,0x555560,0x606068,0x3a3a42,0x70707a];
+  const palWin=[0xffee88,0x88bbff,0xffffff];
+  for(let i=0;i<40;i++){
+    const px=rnd(-55,55),pz=rnd(-16,16);
+    if(Math.abs(px)<2&&Math.abs(pz)<2)continue;
+    const w=rnd(1.5,5),d=rnd(1.5,4),h=rnd(3,16);
+    const b=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),new THREE.MeshLambertMaterial({color:palBld[i%5]}));
+    b.position.set(px,h/2,pz);b.castShadow=true;b.receiveShadow=true;SC.add(b);terrainObjs.push(b);
+    for(let wf=1;wf<Math.floor(h/2.5);wf++){
+      const ws=new THREE.Mesh(new THREE.BoxGeometry(w*0.8,0.25,d*0.8+0.02),
+        new THREE.MeshBasicMaterial({color:palWin[Math.floor(rnd(0,3))],transparent:true,opacity:0.75}));
+      ws.position.set(px,wf*2.5,pz);SC.add(ws);terrainObjs.push(ws);
+    }
+    const roof=new THREE.Mesh(new THREE.BoxGeometry(w*0.6,0.5,d*0.6),new THREE.MeshLambertMaterial({color:0x303038}));
+    roof.position.set(px,h+0.25,pz);SC.add(roof);terrainObjs.push(roof);
+  }
+}
+function _addRocks(n){
+  for(let i=0;i<n;i++){
+    const px=rnd(-50,50),pz=rnd(-18,18),sz=rnd(0.5,3.5);
+    const geo=Math.random()<0.5?new THREE.DodecahedronGeometry(sz,0):new THREE.OctahedronGeometry(sz,0);
+    const rock=new THREE.Mesh(geo,new THREE.MeshLambertMaterial({color:new THREE.Color().setHSL(0.07,0.15,rnd(0.25,0.45))}));
+    rock.position.set(px,sz*0.35,pz);rock.rotation.set(rnd(0,2),rnd(0,2),rnd(0,2));rock.castShadow=true;
+    SC.add(rock);terrainObjs.push(rock);
+  }
+}
+function _addDunes(){
+  for(let i=0;i<15;i++){
+    const px=rnd(-55,55),pz=rnd(-18,18),w=rnd(5,15),h=rnd(1,3);
+    const d=new THREE.Mesh(new THREE.SphereGeometry(1,14,8),new THREE.MeshLambertMaterial({color:new THREE.Color().setHSL(0.10,0.55,rnd(0.45,0.55))}));
+    d.scale.set(w,h,w*0.5);d.position.set(px,0,pz);SC.add(d);terrainObjs.push(d);
+  }
+}
+function _addIceSurface(){
+  for(let i=0;i<40;i++){
+    const ang=rnd(0,Math.PI),len=rnd(3,16),x=rnd(-50,50),z=rnd(-18,18);
+    const pts=[];
+    for(let s=0;s<=8;s++){
+      pts.push(new THREE.Vector3(x+Math.cos(ang+rnd(-0.2,0.2))*len*s/8,0.06,z+Math.sin(ang+rnd(-0.2,0.2))*len*s/8));
+    }
+    const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),
+      new THREE.LineBasicMaterial({color:0x99ccee,transparent:true,opacity:rnd(0.3,0.7)}));
+    SC.add(line);terrainObjs.push(line);
+  }
+  _addRocks(15);
+}
+function _addOceanAnimated(){
+  const wGeo=new THREE.PlaneGeometry(160,160,60,60);
+  const wArr=wGeo.attributes.position.array;
+  for(let i=0;i<wArr.length;i+=3){
+    wArr[i+1]=Math.sin(wArr[i]*0.3)*0.08+Math.cos(wArr[i+2]*0.28)*0.06;
+  }
+  wGeo.computeVertexNormals();
+  const wMesh=new THREE.Mesh(wGeo,new THREE.MeshPhongMaterial({color:0x0a3870,shininess:120,specular:0x336699,transparent:true,opacity:0.6}));
+  wMesh.rotation.x=-Math.PI/2;wMesh.position.y=0.05;wMesh.userData.isWave=true;
+  SC.add(wMesh);terrainObjs.push(wMesh);
+  for(let i=0;i<8;i++){
+    const fr=new THREE.Mesh(new THREE.TorusGeometry(rnd(5,25),0.08,4,50),
+      new THREE.MeshBasicMaterial({color:0xaaccee,transparent:true,opacity:rnd(0.2,0.4)}));
+    fr.rotation.x=-Math.PI/2;fr.position.y=0.08;fr.userData.foamR=rnd(5,25);fr.userData.foamSpd=rnd(0.3,0.7);
+    SC.add(fr);terrainObjs.push(fr);
+  }
+}
+
+function _buildAsteroid(){
+  AST=new THREE.Group();
+  const aGeo=new THREE.IcosahedronGeometry(1.5,3);
+  const aArr=aGeo.attributes.position.array;
+  for(let i=0;i<aArr.length;i+=3){
+    const x=aArr[i],y=aArr[i+1],z=aArr[i+2];
+    const n=Math.sin(x*3.1+y*4.7)*0.13+Math.cos(y*5.3+z*2.9)*0.11+Math.sin(z*4.1+x*3.8)*0.09+Math.sin(x*8+y*6)*0.04;
+    const s=1+n;aArr[i]*=s;aArr[i+1]*=s;aArr[i+2]*=s;
+  }
+  aGeo.computeVertexNormals();
+  const acArr=new Float32Array(aArr.length);
+  for(let i=0;i<aArr.length;i+=3){
+    const t=clamp((aArr[i+1]+1.8)/3.6,0,1)+rnd(-0.08,0.08);
+    const vc=new THREE.Color().setHSL(0.07,0.3,lerp(0.08,0.38,t));
+    acArr[i]=vc.r;acArr[i+1]=vc.g;acArr[i+2]=vc.b;
+  }
+  aGeo.setAttribute('color',new THREE.BufferAttribute(acArr,3));
+  const aCore=new THREE.Mesh(aGeo,new THREE.MeshLambertMaterial({vertexColors:true}));
+  aCore.castShadow=true;AST.add(aCore);
+  const glowMat=new THREE.MeshBasicMaterial({color:0xff4400,transparent:true,opacity:0,side:THREE.BackSide});
+  glowMat.userData.tag='glow';AST.add(new THREE.Mesh(new THREE.SphereGeometry(2.1,10,8),glowMat));
+  const coronaMat=new THREE.MeshBasicMaterial({color:0xff9900,transparent:true,opacity:0,side:THREE.BackSide});
+  coronaMat.userData.tag='corona';AST.add(new THREE.Mesh(new THREE.SphereGeometry(3.0,8,6),coronaMat));
+  AST.position.set(-70,50,0);
+  SC.add(AST);
+}
+
+function _spawn(cfg){
+  for(let i=0;i<cfg.n;i++){
+    let geo;
+    const sz=rnd(cfg.szA,cfg.szB);
+    if(cfg.shape==='box')geo=new THREE.BoxGeometry(sz,sz*rnd(0.3,0.8),sz);
+    else if(cfg.shape==='shard')geo=new THREE.BoxGeometry(sz*0.25,sz,sz*0.25);
+    else if(cfg.shape==='flat')geo=new THREE.BoxGeometry(sz*rnd(0.5,1.5),sz*0.15,sz*rnd(0.5,1.5));
+    else geo=new THREE.SphereGeometry(sz,5,4);
+    const col=cfg.cols[Math.floor(Math.random()*cfg.cols.length)];
+    const m=new THREE.Mesh(geo,new THREE.MeshBasicMaterial({color:new THREE.Color(...col),transparent:true,opacity:cfg.opa||1}));
+    const ox=cfg.ox||0,oy=cfg.oy||0,oz=cfg.oz||0;
+    m.position.set(ox+rnd(-cfg.spread,cfg.spread),oy,oz+rnd(-cfg.spread,cfg.spread));
+    const spd=rnd(cfg.sA,cfg.sB);
+    const phi=rnd(0,Math.PI*(cfg.upOnly?0.65:1));
+    const th=rnd(0,Math.PI*2);
+    m.userData={
+      vx:Math.sin(phi)*Math.cos(th)*spd*(cfg.sideScale||1),
+      vy:Math.abs(Math.sin(phi))*spd*(cfg.upBias||1)+rnd(0,cfg.upExtra||0),
+      vz:Math.sin(phi)*Math.sin(th)*spd*(cfg.sideScale||0.4),
+      grav:cfg.grav||0.01,life:cfg.opa||1,
+      decay:rnd(cfg.dA,cfg.dB),
+      bounce:cfg.bounce||0,
+      vRx:cfg.spin?rnd(-0.15,0.15):0,vRy:cfg.spin?rnd(-0.15,0.15):0,
+      expandRate:cfg.expand||0,
+    };
+    SC.add(m);particles.push(m);
+  }
+}
+
+function _spawnCrater(){
+  craterGroup=new THREE.Group();
+  const isWater=surfType==='ocean'||surfType==='coastal';
+  const col=isWater?0x001830:surfType==='ice'?0x6899aa:surfType==='desert'?0x8a6418:surfType==='urban'?0x252525:0x1a0f08;
+  const circ=new THREE.Mesh(new THREE.CircleGeometry(3.5,64),new THREE.MeshLambertMaterial({color:col}));
+  circ.rotation.x=-Math.PI/2;circ.position.y=0.07;craterGroup.add(circ);
+  const rimCols=[0x2a1a0a,0x3a2a12,0x4a3820];
+  for(let r=0;r<3;r++){
+    const rim=new THREE.Mesh(new THREE.TorusGeometry(3.5+r*0.55,0.5-r*0.1,8,60),new THREE.MeshLambertMaterial({color:rimCols[r]}));
+    rim.rotation.x=-Math.PI/2;rim.position.y=0.12+r*0.05;craterGroup.add(rim);
+  }
+  for(let i=0;i<60;i++){
+    const ang=rnd(0,Math.PI*2),r2=rnd(3.8,12),sz=rnd(0.08,0.4);
+    const deb=new THREE.Mesh(new THREE.SphereGeometry(sz,4,3),new THREE.MeshLambertMaterial({color:new THREE.Color().setHSL(0.07,0.3,rnd(0.15,0.35))}));
+    deb.position.set(Math.cos(ang)*r2,sz*0.4,Math.sin(ang)*r2);
+    craterGroup.add(deb);
+  }
+  craterGroup.scale.set(0.01,1,0.01);
+  SC.add(craterGroup);
+}
+function _spawnCracks(){
+  for(let c=0;c<22;c++){
+    const ang=rnd(0,Math.PI*2);
+    const pts=[];let cx=0,cz=0;const len=rnd(4,14),segs=10;
+    for(let s=0;s<=segs;s++){cx+=Math.cos(ang+rnd(-0.5,0.5))*len/segs;cz+=Math.sin(ang+rnd(-0.5,0.5))*len/segs;pts.push(new THREE.Vector3(cx,0.09,cz));}
+    const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:0x0a0704,transparent:true,opacity:0}));
+    line.userData={delay:rnd(0,0.5),opacity:0};
+    SC.add(line);crackLines.push(line);
+  }
+}
+function _spawnShockRings(){
+  const ringCols=[0xffffff,0xff9944,0xff4400,0xaa2200];
+  for(let i=0;i<4;i++){
+    const ring=new THREE.Mesh(new THREE.TorusGeometry(0.4,0.15+i*0.04,10,80),new THREE.MeshBasicMaterial({color:ringCols[i],transparent:true,opacity:0.95-i*0.1}));
+    ring.rotation.x=-Math.PI/2;ring.position.y=0.4;
+    ring.userData={s:0.08+i*0.03,spd:0.4+i*0.12,baseOp:0.95-i*0.1};
+    SC.add(ring);shockRings.push(ring);
+  }
+}
+function _addFlashLight(){
+  const fl=new THREE.PointLight(0xffffff,120,60);fl.position.set(0,2,0);SC.add(fl);lights3.push(fl);
+  setTimeout(()=>{if(SC)try{SC.remove(fl);}catch(e){}},80);
+  const glow=new THREE.PointLight(0xff6600,50,45);glow.position.set(0,3,0);SC.add(glow);lights3.push(glow);
+  setTimeout(()=>{if(SC)try{SC.remove(glow);}catch(e){}},500);
+}
+
+function _startView(view){
+  animT=0;impactDone=false;impactTime=0;
+  if(AF)cancelAnimationFrame(AF);
+  CLK.start();
+  switch(view){
+    case 'crater':    _runCraterView();break;
+    case 'shockwave': _runShockwaveView();break;
+    case 'thermal':   _runThermalView();break;
+    case 'tsunami':   _runTsunamiView();break;
+    case 'airblast':  _runAirblastView();break;
+    default:          _runImpactView();break;
+  }
+}
+
+function _runImpactView(){
+  camC={x:30,y:8,z:10};camT={x:30,y:8,z:10};
+  camLC={x:0,y:4,z:0};camLT={x:0,y:4,z:0};
+  camFovC=55;camFovT=55;
+  function loop(){
+    AF=requestAnimationFrame(loop);
+    const dt=Math.min(CLK.getDelta(),0.05);
+    animT+=dt;const T=animT;
+    if(!impactDone&&T<2.2&&AST){
+      const p=eIn(T/2.2,2.5);
+      AST.position.x=-70+p*70;AST.position.y=50-p*50;
+      AST.rotation.x+=dt*2;AST.rotation.z+=dt*1.4;
+      AST.children.forEach(c=>{if(c.material?.userData?.tag==='glow')c.material.opacity=eIn(p,3)*0.6;if(c.material?.userData?.tag==='corona')c.material.opacity=eIn(p,4)*0.35;});
+      if(Math.random()<0.85){_spawn({n:2,cols:p>0.7?[[1,0.4,0.05],[1,0.7,0.1],[1,0.9,0.2]]:[[1,0.55,0.1],[0.9,0.4,0]],szA:0.1+p*0.2,szB:0.4+p*0.5,sA:0,sB:0.04,dA:0.04,dB:0.09,grav:0,ox:AST.position.x,oy:AST.position.y,oz:0,spread:0.4,opa:0.75,upBias:0});}
+      camT.x=lerp(30,20,eOut(p));camT.y=lerp(8,5,eOut(p));
+      camLT.x=lerp(-20,0,eOut(p));camLT.y=lerp(14,2,eOut(p));
+      camFovT=lerp(55,48,eOut(p));
+    }
+    if(!impactDone&&T>=2.2){
+      impactDone=true;impactTime=T;
+      if(AST)AST.visible=false;flashOpacity=1;camShake=1.2;
+      _addFlashLight();_spawnCrater();_spawnCracks();_spawnShockRings();
+      const oc=surfType==='ocean'||surfType==='coastal',isIce=surfType==='ice';
+      _spawn({n:80,cols:[[1,1,0.9],[1,0.95,0.8],[1,0.85,0.6]],szA:0.15,szB:0.6,sA:0.8,sB:2.5,dA:0.012,dB:0.025,grav:0.003,upBias:1.3,upOnly:true,upExtra:0.5,spread:0.3,opa:1,sideScale:0.8});
+      _spawn({n:140,cols:[[1,0.45,0.02],[1,0.3,0],[0.9,0.2,0],[0.7,0.1,0]],szA:0.2,szB:0.9,sA:0.4,sB:1.8,dA:0.007,dB:0.016,grav:0.006,upBias:1.1,upOnly:true,upExtra:0.3,spread:0.5,opa:0.95,sideScale:0.9});
+      _spawn({n:100,cols:surfType==='urban'?[[0.3,0.28,0.25],[0.5,0.45,0.38],[0.15,0.12,0.1]]:[[0.4,0.3,0.15],[0.55,0.4,0.2],[0.65,0.5,0.28]],szA:0.1,szB:0.55,sA:0.3,sB:2.0,dA:0.004,dB:0.01,grav:0.016,spread:0.8,opa:1,shape:'box',spin:true,bounce:0.3,sideScale:1.2});
+      _spawn({n:40,cols:[[0.15,0.12,0.1],[0.2,0.16,0.12],[0.25,0.2,0.15]],szA:0.8,szB:2.2,sA:0.04,sB:0.22,dA:0.003,dB:0.006,grav:-0.001,upBias:2,upOnly:true,spread:1,opa:0.5,expand:1.012});
+      _spawn({n:50,cols:[[0.6,0.5,0.35],[0.7,0.6,0.42],[0.5,0.4,0.28]],szA:0.4,szB:1.5,sA:0.1,sB:0.8,dA:0.003,dB:0.007,grav:0.0005,spread:2,opa:0.55,expand:1.008,upOnly:false,upBias:0.3});
+      if(oc){_spawn({n:250,cols:[[0.1,0.5,0.9],[0.2,0.65,0.98],[0.6,0.85,1],[1,1,1]],szA:0.05,szB:0.3,sA:0.5,sB:3,dA:0.005,dB:0.014,grav:0.02,upOnly:true,upBias:1.5,spread:0.5,opa:0.95,bounce:0.25,sideScale:0.7});_spawn({n:80,cols:[[1,1,1],[0.85,0.95,1]],szA:0.05,szB:0.18,sA:0.3,sB:1.5,dA:0.006,dB:0.014,grav:0.015,spread:3,opa:0.85,upBias:0.6,upOnly:false,bounce:0.2});}
+      if(isIce){_spawn({n:120,cols:[[0.7,0.9,1],[0.85,0.95,1],[1,1,1],[0.55,0.78,0.95]],szA:0.08,szB:0.6,sA:0.4,sB:2.5,dA:0.005,dB:0.012,grav:0.016,spread:0.6,opa:0.9,shape:'shard',spin:true,bounce:0.38});}
+      camT={x:15,y:3,z:8};camLT={x:0,y:3,z:0};camFovT=38;
+    }
+    if(impactDone){
+      const at=T-impactTime;
+      if(at<1.5){camT.x=lerp(15,20,eOut(at/1.5));camT.y=lerp(3,7,eOut(at/1.5));camT.z=lerp(8,14,eOut(at/1.5));camFovT=lerp(38,52,eOut(at/1.5));}
+      else if(at<5){const p2=eOut((at-1.5)/3.5);camT.x=lerp(20,32,p2);camT.y=lerp(7,12,p2);camT.z=lerp(14,24,p2);camLT.y=lerp(2,5,p2);camFovT=lerp(52,62,p2);}
+    }
+    _tickCommon(dt,T);
+  }
+  loop();
+}
+
+function _runCraterView(){
+  camC={x:0,y:180,z:0.01};camT={x:0,y:180,z:0.01};
+  camLC={x:0,y:0,z:0};camLT={x:0,y:0,z:0};
+  camFovC=20;camFovT=20;
+  let craterSpawned=false;
+  function loop(){
+    AF=requestAnimationFrame(loop);
+    const dt=Math.min(CLK.getDelta(),0.05);animT+=dt;const T=animT;
+    if(T<2){
+      const p=eIn(T/2,1.8);
+      camT.y=lerp(180,35,p);camFovT=lerp(20,30,p);
+      if(AST){AST.position.set(rnd(-0.5,0.5)*T*2,lerp(180,2,p),rnd(-0.1,0.1));AST.rotation.x+=dt*1.5;AST.rotation.y+=dt;AST.children.forEach(c=>{if(c.material?.userData?.tag==='glow')c.material.opacity=eIn(p,2)*0.6;if(c.material?.userData?.tag==='corona')c.material.opacity=eIn(p,3)*0.3;});}
+    }
+    if(!craterSpawned&&T>=2){
+      craterSpawned=true;impactDone=true;impactTime=T;
+      if(AST)AST.visible=false;flashOpacity=1;camShake=1;
+      _addFlashLight();_spawnCrater();_spawnCracks();_spawnShockRings();
+      _spawn({n:120,cols:[[1,0.9,0.7],[1,0.6,0.1],[0.9,0.3,0]],szA:0.1,szB:0.7,sA:0.3,sB:2,dA:0.008,dB:0.018,grav:0.008,upOnly:true,spread:0.5,opa:0.95,upBias:1.2});
+      _spawn({n:60,cols:[[0.4,0.3,0.15],[0.55,0.4,0.2]],szA:0.1,szB:0.5,sA:0.2,sB:1.5,dA:0.005,dB:0.012,grav:0.015,spread:1,opa:1,shape:'box',spin:true,bounce:0.3,sideScale:1.5});
+      camT={x:0,y:60,z:0.01};camFovT=25;
+    }
+    if(impactDone){
+      const at=T-impactTime;
+      if(at<0.3){camT.y=lerp(60,28,eOut(at/0.3));}
+      else if(at<2.5){const p=eOut((at-0.3)/2.2);camT.x=lerp(0,12,p);camT.y=lerp(28,12,p);camT.z=lerp(0.01,20,p);camFovT=lerp(25,45,p);camLT.y=lerp(0,1,p);}
+    }
+    _tickCommon(dt,T);
+  }
+  loop();
+}
+
+function _runShockwaveView(){
+  camC={x:0,y:35,z:2};camT={x:0,y:35,z:2};
+  camLC={x:0,y:0,z:0};camLT={x:0,y:0,z:0};
+  camFovC=45;camFovT=45;
+  let triggered=false;
+  function loop(){
+    AF=requestAnimationFrame(loop);
+    const dt=Math.min(CLK.getDelta(),0.05);animT+=dt;const T=animT;
+    if(T<1&&AST){const p=eIn(T,3);AST.position.set(0,lerp(70,0,p),0);AST.rotation.x+=dt*3;AST.children.forEach(c=>{if(c.material?.userData?.tag==='glow')c.material.opacity=0.5;});}
+    if(!triggered&&T>=1){
+      triggered=true;impactDone=true;impactTime=T;
+      if(AST)AST.visible=false;flashOpacity=1;camShake=1.5;
+      _addFlashLight();_spawnCrater();
+      for(let i=0;i<8;i++){
+        const ring=new THREE.Mesh(new THREE.TorusGeometry(0.3,0.2+i*0.06,10,80),new THREE.MeshBasicMaterial({color:new THREE.Color().setHSL(0.08-i*0.01,1.0,lerp(0.9,0.4,i/7)),transparent:true,opacity:0.98-i*0.1}));
+        ring.rotation.x=-Math.PI/2;ring.position.y=0.5;ring.userData={s:0.05+i*0.02,spd:0.5+i*0.15,baseOp:0.98-i*0.1};
+        SC.add(ring);shockRings.push(ring);
+      }
+      _spawn({n:80,cols:[[0.4,0.3,0.15],[0.55,0.4,0.2],[0.3,0.22,0.1]],szA:0.08,szB:0.45,sA:0.6,sB:3.5,dA:0.003,dB:0.008,grav:0.02,spread:0.5,opa:1,shape:'box',spin:true,bounce:0.25,upOnly:false,upBias:0.2,sideScale:2});
+      _spawn({n:100,cols:[[0.7,0.65,0.55],[0.65,0.55,0.4]],szA:0.5,szB:2,sA:0.2,sB:1.5,dA:0.002,dB:0.006,grav:0,spread:3,opa:0.4,expand:1.015,upBias:0.3});
+      camT={x:0,y:3,z:5};camLT={x:0,y:0,z:-20};camFovT=70;
+    }
+    if(impactDone){const at=T-impactTime;if(at>0.5&&at<4){const p=eOut((at-0.5)/3.5);camT.z=lerp(5,50,p);camT.y=lerp(3,8,p);}}
+    _tickCommon(dt,T);
+  }
+  loop();
+}
+
+function _runThermalView(){
+  camC={x:25,y:6,z:10};camT={x:25,y:6,z:10};
+  camLC={x:0,y:2,z:0};camLT={x:0,y:2,z:0};
+  camFovC=58;camFovT=58;
+  let triggered=false;
+  function loop(){
+    AF=requestAnimationFrame(loop);
+    const dt=Math.min(CLK.getDelta(),0.05);animT+=dt;const T=animT;
+    if(T<1.5&&AST){const p=eIn(T/1.5,2.5);AST.position.set(-70+p*70,50-p*50,0);AST.rotation.x+=dt*2;AST.children.forEach(c=>{if(c.material?.userData?.tag==='glow')c.material.opacity=p*0.6;if(c.material?.userData?.tag==='corona')c.material.opacity=p*0.35;});if(Math.random()<0.7)_spawn({n:2,cols:[[1,0.6,0.1],[1,0.4,0]],szA:0.12,szB:0.35,sA:0,sB:0.05,dA:0.05,dB:0.1,grav:0,ox:AST.position.x,oy:AST.position.y,oz:0,spread:0.3,opa:0.7,upBias:0});}
+    if(!triggered&&T>=1.5){
+      triggered=true;impactDone=true;impactTime=T;
+      if(AST)AST.visible=false;flashOpacity=1;camShake=0.8;
+      _addFlashLight();_spawnCrater();_spawnCracks();
+      for(let wave=0;wave<6;wave++){setTimeout(()=>{const r=wave*3+1;for(let i=0;i<24;i++){const ang=(i/24)*Math.PI*2;_spawn({n:3,cols:[[1,0.4,0],[1,0.25,0],[1,0.7,0.1],[0.8,0.15,0]],szA:0.2,szB:0.8,sA:0.02,sB:0.15,dA:0.006,dB:0.015,grav:-0.001,ox:Math.cos(ang)*r,oy:0.5,oz:Math.sin(ang)*r*0.4,spread:0.3,opa:0.9,expand:1.005,upOnly:true,upBias:1.2});}},wave*200);}
+      _spawn({n:200,cols:[[1,1,0.8],[1,0.8,0.3],[1,0.5,0.05],[1,0.3,0]],szA:0.15,szB:0.7,sA:0.3,sB:2,dA:0.006,dB:0.015,grav:0.002,spread:0.8,opa:0.95,expand:1.003,upOnly:true,upBias:1.2});
+      _spawn({n:60,cols:[[0.12,0.1,0.08],[0.18,0.15,0.12]],szA:1,szB:3,sA:0.05,sB:0.3,dA:0.002,dB:0.005,grav:-0.002,spread:2,opa:0.45,expand:1.015,upOnly:true,upBias:2});
+      camT={x:20,y:4,z:12};camLT={x:0,y:2,z:0};camFovT=65;
+    }
+    if(impactDone){const at=T-impactTime;if(at>1&&at<5){const p=eOut((at-1)/4);camT.x=lerp(20,35,p);camT.y=lerp(4,10,p);camT.z=lerp(12,20,p);}}
+    _tickCommon(dt,T);
+  }
+  loop();
+}
+
+function _runTsunamiView(){
+  camC={x:0,y:12,z:40};camT={x:0,y:12,z:40};
+  camLC={x:0,y:0,z:0};camLT={x:0,y:0,z:0};
+  camFovC=55;camFovT=55;
+  let triggered=false;
+  function loop(){
+    AF=requestAnimationFrame(loop);
+    const dt=Math.min(CLK.getDelta(),0.05);animT+=dt;const T=animT;
+    terrainObjs.forEach(o=>{
+      if(o.userData?.isWave){
+        const wArr=o.geometry.attributes.position.array;
+        for(let i=0;i<wArr.length;i+=3){const x=wArr[i],z2=wArr[i+2];wArr[i+1]=Math.sin(x*0.3+T*1.5)*0.1+Math.cos(z2*0.28+T*1.2)*0.08;}
+        o.geometry.attributes.position.needsUpdate=true;o.geometry.computeVertexNormals();
+      }
+    });
+    if(T<1.2&&AST){const p=eIn(T/1.2,2.5);AST.position.set(0,lerp(60,0,p),0);AST.rotation.x+=dt*2;}
+    if(!triggered&&T>=1.2){
+      triggered=true;impactDone=true;impactTime=T;
+      if(AST)AST.visible=false;flashOpacity=1;camShake=2;
+      _addFlashLight();
+      _spawn({n:350,cols:[[0.05,0.4,0.88],[0.1,0.55,0.95],[0.5,0.78,1],[1,1,1],[0,0.3,0.75]],szA:0.04,szB:0.4,sA:0.5,sB:4.5,dA:0.004,dB:0.012,grav:0.018,upOnly:true,upBias:2,spread:0.8,opa:0.92,bounce:0.2,sideScale:0.5});
+      _spawn({n:200,cols:[[1,1,1],[0.9,0.95,1],[0.8,0.9,1]],szA:0.03,szB:0.2,sA:0.3,sB:2.5,dA:0.006,dB:0.015,grav:0.012,spread:2,opa:0.85,upBias:0.8,bounce:0.15,sideScale:1.5});
+      for(let i=0;i<6;i++){
+        const tRing=new THREE.Mesh(new THREE.TorusGeometry(0.5,0.4,8,80),new THREE.MeshPhongMaterial({color:i<2?0xaaccff:0x6699cc,shininess:80,specular:0x336699,transparent:true,opacity:0.85-i*0.1}));
+        tRing.rotation.x=-Math.PI/2;tRing.position.y=0.1;tRing.userData={s:0.1+i*0.05,spd:0.8+i*0.25,baseOp:0.85-i*0.1};
+        SC.add(tRing);shockRings.push(tRing);
+      }
+      camT={x:0,y:1.5,z:35};camLT={x:0,y:3,z:0};camFovT=70;
+    }
+    if(impactDone){const at=T-impactTime;if(at>1&&at<5){const p=eOut((at-1)/4);camT.z=lerp(35,60,p);camT.y=lerp(1.5,12,p);camFovT=lerp(70,55,p);}}
+    _tickCommon(dt,T);
+  }
+  loop();
+}
+
+function _runAirblastView(){
+  camC={x:0,y:25,z:40};camT={x:0,y:25,z:40};
+  camLC={x:0,y:0,z:0};camLT={x:0,y:0,z:0};
+  camFovC=55;camFovT=55;
+  let triggered=false;
+  function loop(){
+    AF=requestAnimationFrame(loop);
+    const dt=Math.min(CLK.getDelta(),0.05);animT+=dt;const T=animT;
+    if(T<1.5&&AST){const p=eIn(T/1.5,2.5);AST.position.set(-70+p*70,50-p*50,0);AST.rotation.x+=dt*2;AST.children.forEach(c=>{if(c.material?.userData?.tag==='glow')c.material.opacity=p*0.6;});}
+    if(!triggered&&T>=1.5){
+      triggered=true;impactDone=true;impactTime=T;
+      if(AST)AST.visible=false;flashOpacity=1;camShake=1.5;
+      _addFlashLight();_spawnCrater();_spawnCracks();
+      for(let i=0;i<5;i++){
+        const blastRing=new THREE.Mesh(new THREE.TorusGeometry(0.3,0.25+i*0.08,12,80),new THREE.MeshBasicMaterial({color:i===0?0xffffff:new THREE.Color().setHSL(0.08,0.8,lerp(0.9,0.5,i/4)),transparent:true,opacity:0.9-i*0.12}));
+        blastRing.rotation.x=-Math.PI/2;blastRing.position.y=0.4+i*0.1;blastRing.userData={s:0.05+i*0.02,spd:0.55+i*0.18,baseOp:0.9-i*0.12};
+        SC.add(blastRing);shockRings.push(blastRing);
+      }
+      for(let h=0;h<5;h++){
+        const vRing=new THREE.Mesh(new THREE.TorusGeometry(0.2,0.15,8,40),new THREE.MeshBasicMaterial({color:new THREE.Color().setHSL(0.08,0.9,0.7-h*0.1),transparent:true,opacity:0.7-h*0.1}));
+        vRing.position.set(0,h*0.1,0);vRing.userData={s:0.05,spd:0.3,baseOp:0.7-h*0.1,vertical:true,targetH:2+h*3};
+        SC.add(vRing);shockRings.push(vRing);
+      }
+      _spawn({n:160,cols:[[0.5,0.4,0.25],[0.35,0.28,0.15],[0.65,0.5,0.3]],szA:0.06,szB:0.4,sA:1.5,sB:5,dA:0.004,dB:0.01,grav:0.014,spread:0.3,opa:1,shape:'flat',spin:true,bounce:0.2,upOnly:false,upBias:0.15,sideScale:3});
+      _spawn({n:60,cols:[[0.15,0.12,0.1],[0.2,0.17,0.13],[0.28,0.22,0.16]],szA:1,szB:3.5,sA:0.08,sB:0.4,dA:0.002,dB:0.005,grav:-0.002,spread:2,opa:0.5,expand:1.014,upOnly:true,upBias:2.5});
+      camT={x:0,y:12,z:30};camLT={x:0,y:5,z:0};camFovT=65;
+    }
+    if(impactDone){const at=T-impactTime;if(at>1&&at<5){const p=eOut((at-1)/4);camT.z=lerp(30,55,p);camT.y=lerp(12,20,p);}}
+    _tickCommon(dt,T);
+  }
+  loop();
+}
+
+function _tickCommon(dt,T){
+  for(let i=particles.length-1;i>=0;i--){
+    const p=particles[i],d=p.userData;
+    p.position.x+=d.vx;p.position.y+=d.vy;p.position.z+=d.vz;
+    d.vy-=d.grav;d.life-=d.decay;
+    if(d.vRx)p.rotation.x+=d.vRx;if(d.vRy)p.rotation.y+=d.vRy;
+    if(d.expandRate)p.scale.multiplyScalar(d.expandRate);
+    if(d.bounce>0&&p.position.y<0){p.position.y=0;d.vy=Math.abs(d.vy)*d.bounce;d.vx*=0.72;d.vz*=0.72;}
+    p.material.opacity=Math.max(0,d.life);
+    if(d.life<=0){SC.remove(p);particles.splice(i,1);}
+  }
+  for(let i=shockRings.length-1;i>=0;i--){
+    const r=shockRings[i],d=r.userData;
+    if(d.vertical){r.position.y=Math.min(d.targetH,r.position.y+d.spd*dt*6);d.s+=d.spd*dt*4;r.scale.set(d.s,d.s,d.s);}
+    else{d.s+=d.spd*dt*10;r.scale.set(d.s,1,d.s);}
+    r.material.opacity=Math.max(0,d.baseOp*(1-d.s/60));
+    if(r.material.opacity<=0){SC.remove(r);shockRings.splice(i,1);}
+  }
+  crackLines.forEach(line=>{
+    if(animT-impactTime>line.userData.delay){line.userData.opacity=Math.min(0.92,line.userData.opacity+0.08);line.material.opacity=line.userData.opacity;}
+  });
+  if(craterGroup){const sc=eOut(clamp((animT-impactTime)/0.5,0,1),2);craterGroup.scale.set(sc,1,sc);}
+  terrainObjs.forEach(o=>{
+    if(o.userData?.foamR!==undefined){o.position.y=0.08+Math.sin(T*o.userData.foamSpd+o.userData.foamR)*0.03;o.material.opacity=(0.2+Math.sin(T*o.userData.foamSpd)*0.1);}
+  });
+  flashOpacity=Math.max(0,flashOpacity-dt*7);
+  const fe=document.getElementById('_flashOverlay');if(fe)fe.style.opacity=flashOpacity;
+  camShake=Math.max(0,camShake-dt*2);
+  const sh=camShake;
+  const cs=Math.min(1,8*dt);
+  camC.x=lerp(camC.x,camT.x,cs);camC.y=lerp(camC.y,camT.y,cs);camC.z=lerp(camC.z,camT.z,cs);
+  camLC.x=lerp(camLC.x,camLT.x,cs);camLC.y=lerp(camLC.y,camLT.y,cs);
+  camFovC=lerp(camFovC,camFovT,cs);
+  CAM.position.set(camC.x+Math.sin(T*45)*sh*0.5,camC.y+Math.cos(T*40)*sh*0.35,camC.z+Math.sin(T*50)*sh*0.3);
+  CAM.lookAt(camLC.x,camLC.y,camLC.z);
+  CAM.fov=camFovC;CAM.updateProjectionMatrix();
+  if(timerEl)timerEl.textContent=`T+ ${animT.toFixed(1)}s`;
+  R.render(SC,CAM);
+}
+
+function replayAnimation(){
+  const surface=window._currentSurface||'rock';
+  if(AF)cancelAnimationFrame(AF);
+  _resetState();
+  while(SC&&SC.children.length)SC.remove(SC.children[0]);
+  const tc=TERRAIN_CONFIG[surface]||TERRAIN_CONFIG.rock;
+  surfType=tc.type;
+  _buildWorld();
+  _startView(_currentView||'impact');
+}
+
+window.addEventListener('resize',()=>{
+  if(R&&CAM){
+    const canvas=document.getElementById('impactCanvas');
+    const w=canvas.parentElement.clientWidth;
+    R.setSize(w,480);CAM.aspect=w/480;CAM.updateProjectionMatrix();
+  }
+});
+
+// Auto-init on load
+window.addEventListener('DOMContentLoaded', initResultPage);
+</script>
+</body>
+</html>
