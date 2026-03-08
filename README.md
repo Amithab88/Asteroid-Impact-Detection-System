@@ -11,7 +11,7 @@
 
 ## 🚀 Live Demo
 
-- **Frontend**: [https://YOUR_USERNAME.github.io/asteroid-impact-detection](https://YOUR_USERNAME.github.io/asteroid-impact-detection)
+- **Frontend**: [https://YOUR_USERNAME.github.io/asteroid-impact-detection](https://amithab88.github.io/Asteroid-Impact-Detection-System/frontend)
 - **API Docs**: [https://YOUR-APP.onrender.com/docs](https://YOUR-APP.onrender.com/docs)
 
 ---
