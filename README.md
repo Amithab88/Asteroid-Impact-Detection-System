@@ -49,7 +49,7 @@
 
 ---
 
-## 🗂 Project Structure
+## 🗂 Project Structure 
 
 ```
 asteroid-impact-detection/
